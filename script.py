@@ -15,25 +15,50 @@ def read_markdown_file(filename):
     return content
 
 def extract_clean_title(title):
-    clean_title = re.sub(r'\s*\([^)]*\)|\{[^}]*\}', '', title).strip()
+    clean_title = re.sub(r'\s*\([^)]*\)|\{[^}]*\}}', '', title).strip()
     return clean_title
+
+def dict_key_associated_with_value(mapping, value):
+    return next((key for key, val in mapping.items() if val == value), None)
+
+def get_value_with_default(dictionary, key, default='UNKNOWN'):
+    return dictionary.get(key, default)
+
+def get_value_using_mapped_key(row, column_mapping, desired_value, default='UNKNOWN'):
+    mapped_key = dict_key_associated_with_value(column_mapping, desired_value)
+    return get_value_with_default(row, mapped_key, default)
+
 
 def create_hugo_content(table_data, output_dir, column_mapping):
     os.makedirs(output_dir, exist_ok=True)
 
     for row in table_data:
+
         title_column = next((col for col in column_mapping if "title" in column_mapping[col].lower()), None)
         title = row[title_column] if title_column in row else 'Untitled'
-
-        # Extract the clean title portion and convert to kebab case
         clean_title = extract_clean_title(title)
         title_kebab = slugify(clean_title)
 
-        content = f"+++\ntitle = \"{title}\"+++\n\n"
+        thumbnail_file = re.search(r'src="([^"]+)"', title).group(1) if re.search(r'src="([^"]+)"', title) else None
+        index_column = next((col for col in column_mapping if "index" in column_mapping[col].lower()), None)
+        index = row.get(index_column, 'No Index')  # Default to 'No Index' if index is missing
 
-        for key, value in row.items():
-            if key in column_mapping:
-                content += f"{column_mapping[key]}: {value}\n"
+        finished_date = get_value_using_mapped_key(row, column_mapping, 'finished_date', 'UNKNOWN')
+        release_year = get_value_using_mapped_key(row, column_mapping, 'release_year', 'UNKNOWN')
+        rating = get_value_using_mapped_key(row, column_mapping, 'rating', 'No rating available')
+        description = get_value_using_mapped_key(row, column_mapping, 'description', 'No description available')
+
+        content = f"+++\ndate: {finished_date}\n"
+        print(clean_title)
+        content += f"title: \"(Book #{index}) {clean_title}\"\n"  # Format the title as "(INDEX) TITLE"
+        content += f"frontpage: \"true\"\n"
+        content += f"cover: {thumbnail_file}\n"
+        content += f"tags: ['books']\n"
+        content += f"+++\n\n"
+
+        content += f"Release year: {release_year}\n\n"
+        content += f"{rating}\n\n"
+        content += f"Read [the notes I wrote]({description}) from this book.\n"
 
         filename = f"{title_kebab}.md"
         filepath = os.path.join(output_dir, filename)
@@ -57,6 +82,7 @@ def main():
     for row in rows[1:]:
         row_values = row.strip().split('|')
         row_data = {col_name.strip(): value.strip() for col_name, value in zip(column_names, row_values)}
+        #print(row_data) #1
         table_data.append(row_data)
 
     config = read_config_file(args.config)
