@@ -1,0 +1,10 @@
+{
+    "column_mapping": {
+        "My Notes": "description",
+        "Title (Author)": "title",
+        "Release Year": "release_year",
+        "Finished Date": "finished_date",
+        "My rating": "rating"
+    }
+}
+
