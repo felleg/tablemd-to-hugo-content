@@ -64,7 +64,8 @@ def create_hugo_content(table_data, output_dir, column_mapping):
 
         content += f"Release year: {release_year}\n\n"
         content += f"{rating}\n\n"
-        content += f"Read [the notes I wrote]({note_file}) from this book.\n"
+        if note_file is not None:
+            content += f"Read [the notes I took]({note_file}) from this book.\n"
 
         filename = f"{title_kebab}.md"
         filepath = os.path.join(output_dir, filename)
