@@ -34,31 +34,37 @@ def create_hugo_content(table_data, output_dir, column_mapping):
 
     for row in table_data:
 
+        finished_date = get_value_using_mapped_key(row, column_mapping, 'finished_date', 'UNKNOWN')
+        # Only create posts for books that have an actual finished date.
+        if finished_date[0] != '2':
+            continue
+
         title_column = next((col for col in column_mapping if "title" in column_mapping[col].lower()), None)
         title = row[title_column] if title_column in row else 'Untitled'
-        clean_title = extract_clean_title(title)
-        title_kebab = slugify(clean_title)
-
-        thumbnail_file = re.search(r'src="([^"]+)"', title).group(1) if re.search(r'src="([^"]+)"', title) else None
         index_column = next((col for col in column_mapping if "index" in column_mapping[col].lower()), None)
         index = row.get(index_column, 'No Index')  # Default to 'No Index' if index is missing
 
-        finished_date = get_value_using_mapped_key(row, column_mapping, 'finished_date', 'UNKNOWN')
+        clean_title = extract_clean_title(title)
+        title_kebab = slugify(f"(Book {index}) {clean_title}\n")
+
+        thumbnail_file = re.search(r'src="([^"]+)"', title).group(1) if re.search(r'src="([^"]+)"', title) else None
+
         release_year = get_value_using_mapped_key(row, column_mapping, 'release_year', 'UNKNOWN')
         rating = get_value_using_mapped_key(row, column_mapping, 'rating', 'No rating available')
         description = get_value_using_mapped_key(row, column_mapping, 'description', 'No description available')
+        pattern = pattern = r'\(([^)]+)\)'
+        note_file = re.search(pattern, description).group(1) if re.search(pattern, description) else None
 
-        content = f"+++\ndate: {finished_date}\n"
-        print(clean_title)
-        content += f"title: \"(Book #{index}) {clean_title}\"\n"  # Format the title as "(INDEX) TITLE"
+        content = f"---\ndate: {finished_date}\n"
+        content += f"title: (Book {index}) {clean_title}\n"
         content += f"frontpage: \"true\"\n"
         content += f"cover: {thumbnail_file}\n"
         content += f"tags: ['books']\n"
-        content += f"+++\n\n"
+        content += f"---\n\n"
 
         content += f"Release year: {release_year}\n\n"
         content += f"{rating}\n\n"
-        content += f"Read [the notes I wrote]({description}) from this book.\n"
+        content += f"Read [the notes I wrote]({note_file}) from this book.\n"
 
         filename = f"{title_kebab}.md"
         filepath = os.path.join(output_dir, filename)
